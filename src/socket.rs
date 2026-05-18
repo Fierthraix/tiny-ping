@@ -60,6 +60,16 @@ impl AsyncSocket {
     }
 
     #[cfg(unix)]
+    pub fn bind(&self, addr: &SockAddr) -> io::Result<()> {
+        self.inner.get_ref().bind(addr)
+    }
+
+    #[cfg(not(unix))]
+    pub fn bind(&self, _addr: &SockAddr) -> io::Result<()> {
+        unsupported()
+    }
+
+    #[cfg(unix)]
     pub fn set_ttl(&self, addr: IpAddr, ttl: u32) -> io::Result<()> {
         match addr {
             IpAddr::V4(_) => self.inner.get_ref().set_ttl_v4(ttl),

@@ -25,6 +25,24 @@ println!("reply from {} in {:?}", result.reply.source, result.rtt);
 # }
 ```
 
+Use `PingRequest` when you need to control the ICMP echo payload:
+
+```rust
+use std::{net::IpAddr, time::Duration};
+
+use tiny_ping::{Pinger, PingRequest};
+
+# async fn example() -> Result<(), Box<dyn std::error::Error>> {
+let mut pinger = Pinger::new("1.1.1.1".parse::<IpAddr>()?)?;
+pinger.timeout(Duration::from_secs(1));
+
+let request = PingRequest::new(1).payload(b"tiny-ping");
+let result = pinger.ping(request).await?;
+println!("reply payload was {} bytes", result.reply.payload_len);
+# Ok(())
+# }
+```
+
 For multicast or other cases where more than one host may reply to a single
 request, use `ping_replies`:
 
@@ -70,6 +88,32 @@ println!("reply from {} in {:?}", result.reply.source, result.rtt);
 # Ok(())
 # }
 ```
+
+For repeated pings, use `PingSeries`:
+
+```rust
+use std::{net::IpAddr, time::Duration};
+
+use tiny_ping::{Pinger, PingSeries};
+
+# async fn example() -> Result<(), Box<dyn std::error::Error>> {
+let mut pinger = Pinger::new("1.1.1.1".parse::<IpAddr>()?)?;
+pinger.timeout(Duration::from_secs(1));
+
+let series = PingSeries::new(1, 4).interval(Duration::from_secs(1));
+let results = pinger.ping_many(series).await;
+println!(
+    "{} transmitted, {} received, {:.1}% loss",
+    results.summary.transmitted,
+    results.summary.received,
+    results.summary.loss,
+);
+# Ok(())
+# }
+```
+
+Use `bind_source` to bind the socket to a local source address. The port is
+ignored for ICMP.
 
 ## Tests
 

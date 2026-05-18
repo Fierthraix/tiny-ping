@@ -9,6 +9,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 No user-facing changes yet.
 
+## [0.7.0] - 2026-05-18
+
+### Added
+
+- Added `PingRequest` for custom ICMP echo payloads.
+- Added `PingSeries`, `PingSeriesResult`, `PingAttempt`, and `PingSummary` for
+  repeated ping attempts and summary statistics.
+- Added `Pinger::bind_source` and read-only accessors for target, source,
+  identifier, default payload size, timeout, and TTL/hop-limit.
+
 ## [0.6.2] - 2026-05-15
 
 ### Added

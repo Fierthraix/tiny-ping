@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use tiny_ping::{Pinger, SocketType};
+use tiny_ping::{PingRequest, PingSeries, Pinger, SocketType};
 
 #[test]
 fn raw_loopback_ping_when_enabled() {
@@ -52,6 +52,20 @@ fn dgram_loopback_ping_when_enabled_and_supported() {
         assert_eq!(replies.len(), 1);
         assert_eq!(replies[0].socket_type, SocketType::Dgram);
         assert_eq!(replies[0].reply.sequence, 2);
+
+        let custom = pinger
+            .ping(PingRequest::new(3).payload(b"network-test".as_slice()))
+            .await
+            .unwrap();
+        assert_eq!(custom.reply.sequence, 3);
+        assert_eq!(custom.reply.payload, b"network-test");
+
+        let series = pinger
+            .ping_many(PingSeries::new(4, 2).interval(Duration::from_millis(1)))
+            .await;
+        assert_eq!(series.attempts.len(), 2);
+        assert_eq!(series.summary.transmitted, 2);
+        assert_eq!(series.summary.received, 2);
     });
 }
 

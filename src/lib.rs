@@ -6,7 +6,10 @@ mod socket;
 
 pub use error::Error;
 pub use icmp::EchoReply;
-pub use ping::{PingResult, Pinger, SocketType};
+pub use ping::{
+    PingAttempt, PingRequest, PingResult, PingSeries, PingSeriesResult, PingSummary, Pinger,
+    SocketType,
+};
 
 #[deprecated(
     since = "0.6.0",
