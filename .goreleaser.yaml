@@ -1,0 +1,95 @@
+version: 2
+
+project_name: tiny-ping
+
+builds:
+  - id: tiny-ping
+    builder: rust
+    binary: tiny-ping
+    targets:
+      - x86_64-unknown-linux-gnu
+      - aarch64-unknown-linux-gnu
+      - x86_64-apple-darwin
+      - aarch64-apple-darwin
+      - x86_64-pc-windows-gnu
+    flags:
+      - --release
+      - --locked
+      - --all-features
+
+archives:
+  - id: archives
+    ids:
+      - tiny-ping
+    name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Target }}"
+    wrap_in_directory: "{{ .ProjectName }}-{{ .Version }}-{{ .Target }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README*
+      - LICENSE*
+      - CHANGELOG*
+      - NOTICE*
+
+checksum:
+  name_template: checksums.txt
+
+homebrew_casks:
+  - name: tiny-ping
+    ids:
+      - archives
+    repository:
+      owner: Fierthraix
+      name: homebrew-tap
+      token: "{{ .Env.RELEASE_PUBLISH_TOKEN }}"
+    directory: Casks
+    homepage: https://github.com/Fierthraix/tiny-ping
+    description: Small Asynchronous ICMP library and CLI
+    license: MIT
+    binaries:
+      - tiny-ping
+scoops:
+  - name: tiny-ping
+    ids:
+      - archives
+    repository:
+      owner: Fierthraix
+      name: scoop-bucket
+      token: "{{ .Env.RELEASE_PUBLISH_TOKEN }}"
+    directory: bucket
+    homepage: https://github.com/Fierthraix/tiny-ping
+    description: Small Asynchronous ICMP library and CLI
+    license: MIT
+
+nix:
+  - name: tiny-ping
+    ids:
+      - archives
+    repository:
+      owner: Fierthraix
+      name: nur-packages
+      token: "{{ .Env.RELEASE_PUBLISH_TOKEN }}"
+    path: pkgs/tiny-ping/default.nix
+    homepage: https://github.com/Fierthraix/tiny-ping
+    description: Small Asynchronous ICMP library and CLI
+    license: mit
+
+nfpms:
+  - id: packages
+    ids:
+      - tiny-ping
+    package_name: tiny-ping
+    vendor: Fierthraix
+    homepage: https://github.com/Fierthraix/tiny-ping
+    maintainer: Fierthraix
+    description: Small Asynchronous ICMP library and CLI
+    license: MIT
+    bindir: /usr/bin
+    formats:
+      - deb
+      - rpm
+      - apk

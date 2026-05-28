@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish-crate:
+    name: Publish crate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Load release config
+        run: cat packaging/aur/config.env >> "$GITHUB_ENV"
+
+      - name: Verify tag matches crate version
+        run: |
+          version="$(cargo metadata --no-deps --format-version=1 | jq -r --arg crate "$CRATE_NAME" '.packages[] | select(.name == $crate) | .version')"
+          tag="${GITHUB_REF_NAME#v}"
+          test "$version" = "$tag"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Publish crate if needed
+        run: |
+          locked=()
+          if [ -f Cargo.lock ]; then
+            locked=(--locked)
+          fi
+          cargo package "${locked[@]}"
+          if curl -fsS "https://crates.io/api/v1/crates/${CRATE_NAME}/${VERSION}" >/dev/null; then
+            echo "${CRATE_NAME} ${VERSION} is already published"
+          else
+            cargo publish "${locked[@]}" --token "$CARGO_REGISTRY_TOKEN"
+          fi
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  goreleaser:
+    name: Publish GoReleaser artifacts
+    runs-on: ubuntu-latest
+    needs: publish-crate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+
+      - name: Install cargo-zigbuild
+        uses: taiki-e/install-action@cargo-zigbuild
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
