@@ -39,11 +39,18 @@ jobs:
             locked=(--locked)
           fi
           cargo package "${locked[@]}"
-          if curl -fsS "https://crates.io/api/v1/crates/${CRATE_NAME}/${VERSION}" >/dev/null; then
-            echo "${CRATE_NAME} ${VERSION} is already published"
-          else
-            cargo publish "${locked[@]}" --token "$CARGO_REGISTRY_TOKEN"
+          publish_log="$(mktemp)"
+          publish_status=0
+          cargo publish "${locked[@]}" --token "$CARGO_REGISTRY_TOKEN" >"$publish_log" 2>&1 || publish_status=$?
+          cat "$publish_log"
+          if [ "$publish_status" -eq 0 ]; then
+            exit 0
           fi
+          if grep -E "crate .* already exists|already uploaded" "$publish_log" >/dev/null; then
+            echo "${CRATE_NAME} ${VERSION} is already published"
+            exit 0
+          fi
+          exit "$publish_status"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -78,3 +85,97 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_PUBLISH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+
+  publish-aur:
+    name: Publish AUR packages
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Arch packaging tools
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git openssh pacman-contrib sudo curl jq
+          useradd -m builder
+          printf 'builder ALL=(ALL:ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/builder
+          chmod 0440 /etc/sudoers.d/builder
+
+      - name: Configure AUR SSH
+        run: |
+          install -dm700 "$HOME/.ssh"
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > "$HOME/.ssh/aur_github_actions"
+          chmod 600 "$HOME/.ssh/aur_github_actions"
+          ssh-keyscan -t rsa,ecdsa,ed25519 aur.archlinux.org > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+          ssh-keygen -F aur.archlinux.org -f "$HOME/.ssh/known_hosts" >/dev/null
+          ssh -i "$HOME/.ssh/aur_github_actions" \
+            -o IdentitiesOnly=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            aur@aur.archlinux.org help >/dev/null
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+
+      - name: Generate and push AUR packages
+        run: |
+          set -euo pipefail
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur_github_actions -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes"
+          source packaging/aur/config.env
+          version="${GITHUB_REF_NAME#v}"
+          short_sha="${GITHUB_SHA::7}"
+          packages=("${AUR_NAME}" "${AUR_NAME}-bin" "${AUR_NAME}-git")
+
+          generate_srcinfo() {
+            local pkg="$1"
+            local dir="$GITHUB_WORKSPACE/packaging/aur/$pkg"
+            chown -R builder:builder "$dir"
+            if [[ "$pkg" == *-git ]]; then
+              sudo -u builder bash -lc "cd '$dir' && makepkg --printsrcinfo > .SRCINFO"
+              return 0
+            fi
+
+            sudo -u builder bash -lc "
+              set -euo pipefail
+              cd '$dir'
+              for attempt in 1 2 3 4 5 6; do
+                if updpkgsums && makepkg --printsrcinfo > .SRCINFO; then
+                  exit 0
+                fi
+                sleep 15
+              done
+              exit 1
+            "
+          }
+
+          publish_pkg() {
+            local pkg="$1"
+            local dir="$GITHUB_WORKSPACE/packaging/aur/$pkg"
+            local clone="/tmp/aur-$pkg"
+
+            sed -i "s/^pkgver=.*/pkgver=${version}/" "$dir/PKGBUILD"
+            sed -i "s/^pkgrel=.*/pkgrel=1/" "$dir/PKGBUILD"
+            if [[ "$pkg" == *-git ]]; then
+              sed -i "s/^pkgver=.*/pkgver=${version}.r0.g${short_sha}/" "$dir/PKGBUILD"
+            fi
+
+            generate_srcinfo "$pkg"
+
+            git clone "ssh://aur@aur.archlinux.org/${pkg}.git" "$clone"
+            cp "$dir/PKGBUILD" "$dir/.SRCINFO" "$clone/"
+            git -C "$clone" config user.name "GitHub Actions"
+            git -C "$clone" config user.email "actions@github.com"
+            git -C "$clone" add PKGBUILD .SRCINFO
+            if git -C "$clone" diff --cached --quiet; then
+              echo "$pkg is already up to date"
+              return 0
+            fi
+            git -C "$clone" commit -m "$pkg: update to ${version}"
+            git -C "$clone" push origin master
+          }
+
+          for pkg in "${packages[@]}"; do
+            publish_pkg "$pkg"
+          done

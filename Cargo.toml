@@ -1,6 +1,6 @@
 [package]
 name = "tiny-ping"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Lucas Rooyakkers <lucas.rooyakkers@pm.me>", "An Long <aisk1988@gmail.com>", "kolapapa <milk346512016@gmail.com>"]
 license = "MIT"
 description = "Small Asynchronous ICMP library"

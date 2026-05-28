@@ -13,20 +13,43 @@ Small async ICMP library. No proc macros.
 
 ## Installation
 
+### Cargo
+
 ```bash
 cargo install tiny-ping
-brew tap Fierthraix/tap
-brew install --cask tiny-ping
-nix run github:Fierthraix/nur-packages#tiny-ping
 ```
+
+### Arch Linux / AUR
+
+```bash
+yay -S tiny-ping
+yay -S tiny-ping-bin
+yay -S tiny-ping-git
+```
+
+### macOS / Homebrew
+
+```zsh
+brew install --cask Fierthraix/tap/tiny-ping
+```
+
+### Windows / Scoop
 
 ```powershell
 scoop bucket add fierthraix https://github.com/Fierthraix/scoop-bucket
 scoop install tiny-ping
 ```
 
+### Nix
+
+```bash
+nix profile install github:Fierthraix/nur-packages#tiny-ping
+```
+
+### Release Assets
+
 ```text
-deb/rpm/apk/tar/zip: https://github.com/Fierthraix/tiny-ping/releases
+https://github.com/Fierthraix/tiny-ping/releases/latest
 ```
 
 ## Usage
