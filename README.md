@@ -1,12 +1,33 @@
 # rust tiny-ping
 
+[![CI](https://github.com/Fierthraix/tiny-ping/actions/workflows/ci.yml/badge.svg)](https://github.com/Fierthraix/tiny-ping/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Fierthraix/tiny-ping?display_name=tag)](https://github.com/Fierthraix/tiny-ping/releases)
 [![Crates.io](https://img.shields.io/crates/v/tiny-ping.svg)](https://crates.io/crates/tiny-ping)
+[![Downloads](https://img.shields.io/crates/d/tiny-ping.svg)](https://crates.io/crates/tiny-ping)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Docs](https://docs.rs/tiny-ping/badge.svg)](https://docs.rs/tiny-ping/)
 
 Ping function implemented in rust, made for small compile times.
 
 Small async ICMP library. No proc macros.
+
+## Installation
+
+```bash
+cargo install tiny-ping
+brew tap Fierthraix/tap
+brew install --cask tiny-ping
+nix run github:Fierthraix/nur-packages#tiny-ping
+```
+
+```powershell
+scoop bucket add fierthraix https://github.com/Fierthraix/scoop-bucket
+scoop install tiny-ping
+```
+
+```text
+deb/rpm/apk/tar/zip: https://github.com/Fierthraix/tiny-ping/releases
+```
 
 ## Usage
 
